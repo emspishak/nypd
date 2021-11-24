@@ -5,7 +5,6 @@ import com.opencsv.exceptions.CsvException;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
@@ -16,6 +15,9 @@ public class ProfilePayroll {
   @Option(name = "-profile", usage = "NYPD CSV profile data.")
   private File profileFile;
 
+  @Option(name = "-payroll", usage = "NYC CSV payroll data for NYPD.")
+  private File payrollFile;
+
   public static void main(String[] args) throws CmdLineException, CsvException, IOException {
     new ProfilePayroll().doMain(args);
   }
@@ -25,11 +27,16 @@ public class ProfilePayroll {
     parser.parseArgument(args);
 
     List<String[]> profiles = readProfiles(profileFile);
-    profiles.stream().forEach(a -> System.out.println(Arrays.toString(a)));
+    List<String[]> payroll = readPayroll(payrollFile);
   }
 
   private List<String[]> readProfiles(File profileFile) throws CsvException, IOException {
     CSVReaderHeaderAware reader = new CSVReaderHeaderAware(new FileReader(profileFile));
+    return reader.readAll();
+  }
+
+  private List<String[]> readPayroll(File payrollFile) throws CsvException, IOException {
+    CSVReaderHeaderAware reader = new CSVReaderHeaderAware(new FileReader(payrollFile));
     return reader.readAll();
   }
 }
