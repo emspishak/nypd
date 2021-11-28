@@ -4,6 +4,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
+import com.google.common.collect.ImmutableSet;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderHeaderAware;
 import com.opencsv.exceptions.CsvException;
@@ -16,6 +17,26 @@ import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
 public class ProfilePayroll {
+
+  private final ImmutableSet<String> TITLES_TO_REMOVE =
+      ImmutableSet.of(
+          "ASSOCIATE TRAFFIC ENFORCEMENT AGENT",
+          "AUTO MECHANIC",
+          "CITY CUSTODIAL ASSISTANT",
+          "COMPUTER ASSOCIATE",
+          "CRIMINALIST",
+          "EVIDENCE AND PROPERTY CONTROL SPECIALIST",
+          "POLICE ADMINISTRATIVE AIDE",
+          "POLICE CADET",
+          "POLICE COMMUNICATIONS TECHNICIAN",
+          "PRINCIPAL ADMINISTRATIVE ASSOCIATE -  NON SUPVR",
+          "RADIO REPAIR MECHANIC",
+          "SCHOOL CROSSING GUARD",
+          "SCHOOL SAFETY AGENT",
+          "SENIOR POLICE ADMINISTRATIVE AIDE",
+          "SUPERVISING POLICE COMMUNICATIONS TECHNICIAN",
+          "SUPERVISOR OF SCHOOL SECURITY",
+          "TRAFFIC ENFORCEMENT AGENT");
 
   @Option(name = "-profile", usage = "NYPD CSV profile data.")
   private File profileFile;
@@ -49,6 +70,9 @@ public class ProfilePayroll {
     for (String[] row : unfiltered) {
       Payroll payroll = new Payroll(row);
       if (!payroll.getYear().equals("2021")) {
+        continue;
+      }
+      if (TITLES_TO_REMOVE.contains(payroll.getTitle())) {
         continue;
       }
       filtered.put(payroll.getLastName(), payroll);
