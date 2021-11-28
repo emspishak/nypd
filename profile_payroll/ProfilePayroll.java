@@ -1,5 +1,10 @@
 package emspishak.nypd.profilepayroll;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
+import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderHeaderAware;
 import com.opencsv.exceptions.CsvException;
 import java.io.File;
@@ -26,17 +31,75 @@ public class ProfilePayroll {
     CmdLineParser parser = new CmdLineParser(this);
     parser.parseArgument(args);
 
-    List<String[]> profiles = readProfiles(profileFile);
-    List<String[]> payroll = readPayroll(payrollFile);
+    ImmutableList<Profile> profiles = readProfiles(profileFile);
+    ImmutableListMultimap<String, Payroll> payroll = readPayroll(payrollFile);
   }
 
-  private List<String[]> readProfiles(File profileFile) throws CsvException, IOException {
+  private ImmutableList<Profile> readProfiles(File profileFile) throws CsvException, IOException {
     CSVReaderHeaderAware reader = new CSVReaderHeaderAware(new FileReader(profileFile));
-    return reader.readAll();
+    return reader.readAll().stream().map(Profile::new).collect(toImmutableList());
   }
 
-  private List<String[]> readPayroll(File payrollFile) throws CsvException, IOException {
-    CSVReaderHeaderAware reader = new CSVReaderHeaderAware(new FileReader(payrollFile));
-    return reader.readAll();
+  private ImmutableListMultimap<String, Payroll> readPayroll(File payrollFile)
+      throws CsvException, IOException {
+    CSVReader reader = new CSVReader(new FileReader(payrollFile));
+    List<String[]> unfiltered = reader.readAll();
+    ImmutableListMultimap.Builder<String, Payroll> filtered = ImmutableListMultimap.builder();
+
+    for (String[] row : unfiltered) {
+      Payroll payroll = new Payroll(row);
+      if (!payroll.getYear().equals("2021")) {
+        continue;
+      }
+      filtered.put(payroll.getLastName(), payroll);
+    }
+
+    return filtered.build();
+  }
+
+  private static class Profile {
+
+    private final String[] rows;
+
+    private Profile(String[] rows) {
+      this.rows = rows;
+    }
+
+    private String getFirstName() {
+      return rows[2];
+    }
+
+    private String getLastName() {
+      return rows[3];
+    }
+
+    private String[] getRaw() {
+      return rows;
+    }
+  }
+
+  private static class Payroll {
+
+    private final String[] rows;
+
+    private Payroll(String[] rows) {
+      this.rows = rows;
+    }
+
+    private String getFirstName() {
+      return rows[4];
+    }
+
+    private String getLastName() {
+      return rows[3];
+    }
+
+    private String getTitle() {
+      return rows[8];
+    }
+
+    private String getYear() {
+      return rows[0];
+    }
   }
 }

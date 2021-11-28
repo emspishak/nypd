@@ -15,6 +15,7 @@ load("@rules_jvm_external//:defs.bzl", "maven_install")
 maven_install(
     artifacts = [
         "args4j:args4j:2.33",
+        "com.google.guava:guava:31.0.1-jre",
         "com.opencsv:opencsv:5.5.2",
     ],
     repositories = [
