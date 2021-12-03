@@ -20,6 +20,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
@@ -94,20 +96,6 @@ public final class ProfilePayroll {
     ArrayListMultimap<String, Payroll> payroll = readPayroll(payrollFile);
 
     merge(profiles, payroll);
-    // Do it all again! Now that there are fewer payroll options to match against we may hit some
-    // new matches, especially with duplicate names and missing middle names. Example:
-    //
-    // In profile data:
-    // TORRES, VICTOR J
-    // TORRES, VICTOR M
-    //
-    // In payroll data
-    // TORRES,VICTOR
-    // TORRES,VICTOR,M
-    //
-    // The first round Victor J wouldn't match anything, but the second round Victor M would be gone
-    // from payroll matches so there'd only be one Victor Torres and it would match.
-    merge(profiles, payroll);
   }
 
   private List<Profile> readProfiles(File profileFile) throws CsvException, IOException {
@@ -130,6 +118,10 @@ public final class ProfilePayroll {
       if (TITLES_TO_REMOVE.contains(payroll.getTitle())) {
         continue;
       }
+      // Payroll data has a bunch of entries with no names which we can't do anything with.
+      if (payroll.getFirstName().isEmpty() && payroll.getLastName().isEmpty()) {
+        continue;
+      }
       filtered.put(payroll.getLastName(), payroll);
     }
 
@@ -138,14 +130,40 @@ public final class ProfilePayroll {
 
   // TODO: return the merged data.
   private void merge(List<Profile> profiles, ArrayListMultimap<String, Payroll> payroll) {
+    merge(profiles, payroll, this::findLastNameMatches);
+
+    // Do it all again! Now that there are fewer payroll options to match against we may hit some
+    // new matches, especially with duplicate names and missing middle names. Example:
+    //
+    // In profile data:
+    // TORRES, VICTOR J
+    // TORRES, VICTOR M
+    //
+    // In payroll data
+    // TORRES,VICTOR
+    // TORRES,VICTOR,M
+    //
+    // The first round Victor J wouldn't match anything, but the second round Victor M would be gone
+    // from payroll matches so there'd only be one Victor Torres and it would match.
+    merge(profiles, payroll, this::findLastNameMatches);
+
+    // Try it one more time with all of the remaining profiles, but this time matching with prefixes
+    // of last name.
+    merge(profiles, payroll, this::findLastNamePrefixMatches);
+  }
+
+  private void merge(
+      List<Profile> profiles,
+      ArrayListMultimap<String, Payroll> payroll,
+      BiFunction<Profile, ArrayListMultimap<String, Payroll>, List<Payroll>> lastNamesFunction) {
     int matches = 0;
 
     for (Iterator<Profile> it = profiles.iterator(); it.hasNext(); ) {
       Profile profile = it.next();
-      Payroll match = findMatch(profile, payroll.get(profile.getLastName()));
+      Payroll match = findMatch(profile, lastNamesFunction.apply(profile, payroll));
       if (match != null) {
         // Remove the match so it won't match anyone else.
-        checkState(payroll.remove(profile.getLastName(), match), match);
+        checkState(payroll.remove(match.getLastName(), match), match);
         // Remove the profile since we don't want to try to match it again in future round(s).
         it.remove();
         matches++;
@@ -153,6 +171,25 @@ public final class ProfilePayroll {
     }
 
     System.out.printf("matches: %s, total: %s%n", matches, profiles.size());
+  }
+
+  private List<Payroll> findLastNameMatches(
+      Profile profile, ArrayListMultimap<String, Payroll> payroll) {
+    return payroll.get(profile.getLastName());
+  }
+
+  private List<Payroll> findLastNamePrefixMatches(
+      Profile profile, ArrayListMultimap<String, Payroll> payroll) {
+    List<Payroll> matches = new ArrayList<>();
+    for (Map.Entry<String, Payroll> entry : payroll.entries()) {
+      String payrollLastName = entry.getKey();
+
+      if (profile.getLastName().startsWith(payrollLastName)
+          || payrollLastName.startsWith(profile.getLastName())) {
+        matches.add(entry.getValue());
+      }
+    }
+    return matches;
   }
 
   /** The payrolls parameter is a list of payroll data whose last name matches the given profile. */
@@ -224,7 +261,7 @@ public final class ProfilePayroll {
     }
 
     throw new IllegalStateException(
-        "multiple matches found for " + profile + " - this is unhandled.");
+        "multiple matches found for " + profile + " - this is unhandled: " + matchingFirstNames);
   }
 
   private Payroll findManualMatch(Profile profile, List<Payroll> payrolls) {
