@@ -157,10 +157,10 @@ public final class ProfilePayroll {
     }
 
     if (matches.isEmpty()) {
-      // If there are no first name matches, try where the profile first name is a prefix of the
-      // payroll first name.
+      // If there are no first name matches, try where one name is a prefix of the other.
       for (Payroll payroll : initialPayrolls) {
-        if (payroll.getFirstName().startsWith(profile.getFirstName())) {
+        if (payroll.getFirstName().startsWith(profile.getFirstName())
+            || profile.getFirstName().startsWith(payroll.getFirstName())) {
           matches.add(payroll);
         }
       }
