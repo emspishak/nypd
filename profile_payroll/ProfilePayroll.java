@@ -146,6 +146,8 @@ public final class ProfilePayroll {
       return findManualMatch(profile, payrolls);
     }
 
+    ImmutableList<Payroll> initialPayrolls = ImmutableList.copyOf(payrolls);
+
     List<Payroll> matches = new ArrayList<>();
     for (Payroll payroll : payrolls) {
       // Check if the first name matches (all elements in payrolls already have the same last name).
@@ -153,39 +155,53 @@ public final class ProfilePayroll {
         matches.add(payroll);
       }
     }
+
     if (matches.isEmpty()) {
-      return null;
+      // If there are no first name matches, try where the profile first name is a prefix of the
+      // payroll first name.
+      for (Payroll payroll : initialPayrolls) {
+        if (payroll.getFirstName().startsWith(profile.getFirstName())) {
+          matches.add(payroll);
+        }
+      }
+      return findMatchAfterFirstName(profile, matches);
     } else if (matches.size() == 1) {
       return matches.get(0);
     }
 
     // If there are multiple first name matches, narrow them down with the middle initial.
-    for (Iterator<Payroll> it = matches.iterator(); it.hasNext(); ) {
+    return findMatchAfterFirstName(profile, matches);
+  }
+
+  private Payroll findMatchAfterFirstName(Profile profile, List<Payroll> matchingFirstNames) {
+    // If there are multiple first name matches, narrow them down with the middle initial.
+    for (Iterator<Payroll> it = matchingFirstNames.iterator(); it.hasNext(); ) {
       Payroll payroll = it.next();
       if (!profile.getMiddleInitial().equals(payroll.getMiddleInitial())) {
         it.remove();
       }
     }
-    if (matches.isEmpty()) {
+    if (matchingFirstNames.isEmpty()) {
       return null;
-    } else if (matches.size() == 1) {
-      return matches.get(0);
+    } else if (matchingFirstNames.size() == 1) {
+      return matchingFirstNames.get(0);
     }
 
     // If there are still multiple matches, narrow them down by appointment date.
-    for (Iterator<Payroll> it = matches.iterator(); it.hasNext(); ) {
+    for (Iterator<Payroll> it = matchingFirstNames.iterator(); it.hasNext(); ) {
       Payroll payroll = it.next();
       if (!profile.getAppointmentDate().equals(payroll.getAppointmentDate())) {
         it.remove();
       }
     }
-    if (matches.isEmpty()) {
+    if (matchingFirstNames.isEmpty()) {
       return null;
-    } else if (matches.size() == 1) {
-      return matches.get(0);
+    } else if (matchingFirstNames.size() == 1) {
+      return matchingFirstNames.get(0);
     }
 
-    return null;
+    throw new IllegalStateException(
+        "multiple matches found for " + profile + " - this is unhandled.");
   }
 
   private Payroll findManualMatch(Profile profile, List<Payroll> payrolls) {
