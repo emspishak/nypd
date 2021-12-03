@@ -9,11 +9,14 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ObjectArrays;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderHeaderAware;
+import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvException;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -86,6 +89,9 @@ public final class ProfilePayroll {
   @Option(name = "-payroll", usage = "NYC CSV payroll data for NYPD.")
   private File payrollFile;
 
+  @Option(name = "-output", usage = "File to output the merged data as CSV.")
+  private File outputFile;
+
   public static void main(String[] args) throws CmdLineException, CsvException, IOException {
     new ProfilePayroll().doMain(args);
   }
@@ -97,7 +103,15 @@ public final class ProfilePayroll {
     List<Profile> profiles = readProfiles(profileFile);
     ArrayListMultimap<String, Payroll> payroll = readPayroll(payrollFile);
 
-    merge(profiles, payroll);
+    int totalProfiles = profiles.size();
+
+    List<Merged> merged = merge(profiles, payroll);
+
+    output(merged, profiles);
+
+    System.out.printf(
+        "merged %s out of %s profiles (%s unmerged)%n",
+        merged.size(), totalProfiles, totalProfiles - merged.size());
   }
 
   private List<Profile> readProfiles(File profileFile) throws CsvException, IOException {
@@ -130,9 +144,8 @@ public final class ProfilePayroll {
     return filtered;
   }
 
-  // TODO: return the merged data.
-  private void merge(List<Profile> profiles, ArrayListMultimap<String, Payroll> payroll) {
-    merge(profiles, payroll, this::findLastNameMatches);
+  private List<Merged> merge(List<Profile> profiles, ArrayListMultimap<String, Payroll> payroll) {
+    List merged = merge(profiles, payroll, this::findLastNameMatches);
 
     // Do it all again! Now that there are fewer payroll options to match against we may hit some
     // new matches, especially with duplicate names and missing middle names. Example:
@@ -147,18 +160,20 @@ public final class ProfilePayroll {
     //
     // The first round Victor J wouldn't match anything, but the second round Victor M would be gone
     // from payroll matches so there'd only be one Victor Torres and it would match.
-    merge(profiles, payroll, this::findLastNameMatches);
+    merged.addAll(merge(profiles, payroll, this::findLastNameMatches));
 
     // Try it one more time with all of the remaining profiles, but this time matching with prefixes
     // of last name.
-    merge(profiles, payroll, this::findLastNamePrefixMatches);
+    merged.addAll(merge(profiles, payroll, this::findLastNamePrefixMatches));
+
+    return merged;
   }
 
-  private void merge(
+  private List<Merged> merge(
       List<Profile> profiles,
       ArrayListMultimap<String, Payroll> payroll,
       BiFunction<Profile, ArrayListMultimap<String, Payroll>, List<Payroll>> lastNamesFunction) {
-    int matches = 0;
+    List<Merged> merged = new ArrayList<>();
 
     for (Iterator<Profile> it = profiles.iterator(); it.hasNext(); ) {
       Profile profile = it.next();
@@ -168,11 +183,12 @@ public final class ProfilePayroll {
         checkState(payroll.remove(match.getLastName(), match), match);
         // Remove the profile since we don't want to try to match it again in future round(s).
         it.remove();
-        matches++;
+
+        merged.add(new Merged(profile, match));
       }
     }
 
-    System.out.printf("matches: %s, total: %s%n", matches, profiles.size());
+    return merged;
   }
 
   private List<Payroll> findLastNameMatches(
@@ -283,6 +299,13 @@ public final class ProfilePayroll {
     return LocalDate.parse(date, DATE_FORMAT);
   }
 
+  private void output(List<Merged> merged, List<Profile> profiles) throws IOException {
+    CSVWriter writer = new CSVWriter(new FileWriter(outputFile));
+    merged.stream().map(Merged::getRows).forEach(writer::writeNext);
+    profiles.stream().map(Profile::getRaw).forEach(writer::writeNext);
+    writer.close();
+  }
+
   private static class Profile {
 
     private final String[] rows;
@@ -365,6 +388,10 @@ public final class ProfilePayroll {
       return ProfilePayroll.parseDate(rows[6]);
     }
 
+    private String[] getRaw() {
+      return rows;
+    }
+
     private String normalizeName(String name) {
       return VALID_NAME_CHARS.retainFrom(name);
     }
@@ -378,6 +405,21 @@ public final class ProfilePayroll {
           .add("title", getTitle())
           .add("appointment date", getAppointmentDate())
           .toString();
+    }
+  }
+
+  private static final class Merged {
+
+    private final Profile profile;
+    private final Payroll payroll;
+
+    private Merged(Profile profile, Payroll payroll) {
+      this.profile = profile;
+      this.payroll = payroll;
+    }
+
+    private String[] getRows() {
+      return ObjectArrays.concat(profile.getRaw(), payroll.getRaw(), String.class);
     }
   }
 }
