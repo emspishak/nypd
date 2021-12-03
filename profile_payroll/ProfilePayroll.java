@@ -1,7 +1,7 @@
 package emspishak.nypd.profilepayroll;
 
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+import static java.util.stream.Collectors.toCollection;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.MoreObjects;
@@ -65,7 +65,6 @@ public final class ProfilePayroll {
           .put("939647", "MANHATTAN")
           .put("939646", "BRONX")
           .put("953293", "BRONX")
-          .put("953294", "BROOKLYN")
           // This actually matches two officers, but they're almost exactly the same so this will
           // just choose the first one.
           .put("964716", "BROOKLYN")
@@ -91,15 +90,29 @@ public final class ProfilePayroll {
     CmdLineParser parser = new CmdLineParser(this);
     parser.parseArgument(args);
 
-    ImmutableList<Profile> profiles = readProfiles(profileFile);
+    List<Profile> profiles = readProfiles(profileFile);
     ArrayListMultimap<String, Payroll> payroll = readPayroll(payrollFile);
 
     merge(profiles, payroll);
+    // Do it all again! Now that there are fewer payroll options to match against we may hit some
+    // new matches, especially with duplicate names and missing middle names. Example:
+    //
+    // In profile data:
+    // TORRES, VICTOR J
+    // TORRES, VICTOR M
+    //
+    // In payroll data
+    // TORRES,VICTOR
+    // TORRES,VICTOR,M
+    //
+    // The first round Victor J wouldn't match anything, but the second round Victor M would be gone
+    // from payroll matches so there'd only be one Victor Torres and it would match.
+    merge(profiles, payroll);
   }
 
-  private ImmutableList<Profile> readProfiles(File profileFile) throws CsvException, IOException {
+  private List<Profile> readProfiles(File profileFile) throws CsvException, IOException {
     CSVReaderHeaderAware reader = new CSVReaderHeaderAware(new FileReader(profileFile));
-    return reader.readAll().stream().map(Profile::new).collect(toImmutableList());
+    return reader.readAll().stream().map(Profile::new).collect(toCollection(ArrayList::new));
   }
 
   private ArrayListMultimap<String, Payroll> readPayroll(File payrollFile)
@@ -124,14 +137,17 @@ public final class ProfilePayroll {
   }
 
   // TODO: return the merged data.
-  private void merge(ImmutableList<Profile> profiles, ArrayListMultimap<String, Payroll> payroll) {
+  private void merge(List<Profile> profiles, ArrayListMultimap<String, Payroll> payroll) {
     int matches = 0;
 
-    for (Profile profile : profiles) {
+    for (Iterator<Profile> it = profiles.iterator(); it.hasNext(); ) {
+      Profile profile = it.next();
       Payroll match = findMatch(profile, payroll.get(profile.getLastName()));
       if (match != null) {
         // Remove the match so it won't match anyone else.
         checkState(payroll.remove(profile.getLastName(), match), match);
+        // Remove the profile since we don't want to try to match it again in future round(s).
+        it.remove();
         matches++;
       }
     }
