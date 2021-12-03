@@ -180,6 +180,13 @@ public final class ProfilePayroll {
           matches.add(payroll);
         }
       }
+
+      if (matches.isEmpty()) {
+        return null;
+      } else if (matches.size() == 1) {
+        return matches.get(0);
+      }
+
       return findMatchAfterFirstName(profile, matches);
     } else if (matches.size() == 1) {
       return matches.get(0);
