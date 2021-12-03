@@ -74,8 +74,8 @@ public final class ProfilePayroll {
           .put("968061", "MANHATTAN")
           .build();
 
-  /** Jr suffix to strip from names in payroll data because profile data doesn't include this. */
-  private static final Pattern JR_SUFFIX = Pattern.compile(" JR(\\.)?$");
+  /** Suffixes to strip from names in payroll data because profile data doesn't include this. */
+  private static final Pattern SUFFIXES = Pattern.compile(" ((JR(\\.)?)|II|III|IV)$");
 
   @Option(name = "-profile", usage = "NYPD CSV profile data.")
   private File profileFile;
@@ -265,7 +265,7 @@ public final class ProfilePayroll {
     }
 
     private String getLastName() {
-      return normalizeName(JR_SUFFIX.matcher(rows[3]).replaceAll(""));
+      return normalizeName(SUFFIXES.matcher(rows[3]).replaceAll(""));
     }
 
     private String getTitle() {
