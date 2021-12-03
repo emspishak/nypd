@@ -73,6 +73,8 @@ public final class ProfilePayroll {
           .put("970111", "QUEENS")
           .put("968062", "BROOKLYN")
           .put("968061", "MANHATTAN")
+          .put("965460", "MANHATTAN")
+          .put("949549", "QUEENS")
           .build();
 
   /** Suffixes to strip from names in payroll data because profile data doesn't include this. */
@@ -234,6 +236,8 @@ public final class ProfilePayroll {
   }
 
   private Payroll findMatchAfterFirstName(Profile profile, List<Payroll> matchingFirstNames) {
+    ImmutableList<Payroll> initialMatchingFirstNames = ImmutableList.copyOf(matchingFirstNames);
+
     // If there are multiple first name matches, narrow them down with the middle initial.
     for (Iterator<Payroll> it = matchingFirstNames.iterator(); it.hasNext(); ) {
       Payroll payroll = it.next();
@@ -242,7 +246,8 @@ public final class ProfilePayroll {
       }
     }
     if (matchingFirstNames.isEmpty()) {
-      return null;
+      // If no middle initials match, keep going to see if start dates match.
+      matchingFirstNames = new ArrayList<>(initialMatchingFirstNames);
     } else if (matchingFirstNames.size() == 1) {
       return matchingFirstNames.get(0);
     }
