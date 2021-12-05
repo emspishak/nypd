@@ -56,7 +56,9 @@ public final class ProfilePayroll {
           "SENIOR POLICE ADMINISTRATIVE AIDE",
           "SUPERVISING POLICE COMMUNICATIONS TECHNICIAN",
           "SUPERVISOR OF SCHOOL SECURITY",
-          "TRAFFIC ENFORCEMENT AGENT");
+          "TRAFFIC ENFORCEMENT AGENT",
+          "HOSTLER",
+          "PHOTOGRAPHER");
 
   /* The date format of dates in both the profile and payroll data. */
   private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("M/d/yyyy");
