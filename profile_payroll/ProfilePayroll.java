@@ -11,7 +11,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ObjectArrays;
 import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderHeaderAware;
 import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvException;
 import java.io.File;
@@ -85,6 +84,27 @@ public final class ProfilePayroll {
   /** Suffixes to strip from names in payroll data because profile data doesn't include this. */
   private static final Pattern SUFFIXES = Pattern.compile(" ((JR(\\.)?)|II|III|IV)$");
 
+  /** Column headers for the payroll data, since they're not included in the data file. */
+  private static final String[] PAYROLL_HEADERS = {
+    "Fiscal Year",
+    "Payroll Number",
+    "Agency Name",
+    "Last Name",
+    "First Name",
+    "Mid Init",
+    "Agency Start Date",
+    "Work Location Borough",
+    "Title Description",
+    "Leave Status as of June 30",
+    "Base Salary",
+    "Pay Basis",
+    "Regular Hours",
+    "Regular Gross Paid",
+    "OT Hours",
+    "Total OT Paid",
+    "Total Other Pay"
+  };
+
   @Option(name = "-profile", usage = "NYPD CSV profile data.")
   private File profileFile;
 
@@ -103,13 +123,15 @@ public final class ProfilePayroll {
     parser.parseArgument(args);
 
     List<Profile> profiles = readProfiles(profileFile);
+    String[] profileHeaders = profiles.remove(0).getRaw();
+
     ArrayListMultimap<String, Payroll> payroll = readPayroll(payrollFile);
 
     int totalProfiles = profiles.size();
 
     List<Merged> merged = merge(profiles, payroll);
 
-    output(merged, profiles);
+    output(merged, profiles, profileHeaders);
 
     System.out.printf(
         "merged %s out of %s profiles (%s unmerged)%n",
@@ -117,7 +139,7 @@ public final class ProfilePayroll {
   }
 
   private List<Profile> readProfiles(File profileFile) throws CsvException, IOException {
-    CSVReaderHeaderAware reader = new CSVReaderHeaderAware(new FileReader(profileFile));
+    CSVReader reader = new CSVReader(new FileReader(profileFile));
     return reader.readAll().stream().map(Profile::new).collect(toCollection(ArrayList::new));
   }
 
@@ -301,10 +323,16 @@ public final class ProfilePayroll {
     return LocalDate.parse(date, DATE_FORMAT);
   }
 
-  private void output(List<Merged> merged, List<Profile> profiles) throws IOException {
+  private void output(List<Merged> merged, List<Profile> leftoverProfiles, String[] profileHeaders)
+      throws IOException {
     CSVWriter writer = new CSVWriter(new FileWriter(outputFile));
+
+    String[] allHeaders = ObjectArrays.concat(profileHeaders, PAYROLL_HEADERS, String.class);
+    writer.writeNext(allHeaders);
+
     merged.stream().map(Merged::getRows).forEach(writer::writeNext);
-    profiles.stream().map(Profile::getRaw).forEach(writer::writeNext);
+    leftoverProfiles.stream().map(Profile::getRaw).forEach(writer::writeNext);
+
     writer.close();
   }
 
