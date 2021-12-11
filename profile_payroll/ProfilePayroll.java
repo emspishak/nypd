@@ -17,12 +17,16 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import org.kohsuke.args4j.CmdLineException;
@@ -111,8 +115,8 @@ public final class ProfilePayroll {
   @Option(name = "-payroll", usage = "NYC CSV payroll data for NYPD.")
   private File payrollFile;
 
-  @Option(name = "-output", usage = "File to output the merged data as CSV.")
-  private File outputFile;
+  @Option(name = "-output-dir", usage = "Directory to output the merged data as CSV.")
+  private File outputDir;
 
   public static void main(String[] args) throws CmdLineException, CsvException, IOException {
     new ProfilePayroll().doMain(args);
@@ -124,18 +128,29 @@ public final class ProfilePayroll {
 
     List<Profile> profiles = readProfiles(profileFile);
     String[] profileHeaders = profiles.remove(0).getRaw();
+    ImmutableList<Profile> allProfiles = ImmutableList.copyOf(profiles);
 
-    ArrayListMultimap<String, Payroll> payroll = readPayroll(payrollFile);
+    SortedMap<String, ArrayListMultimap<String, Payroll>> payrolls = readPayroll(payrollFile);
 
     int totalProfiles = profiles.size();
 
-    List<Merged> merged = merge(profiles, payroll);
+    Map<String, List<Merged>> merged = new HashMap<>();
+    Map<String, List<Profile>> leftoverProfiles = new HashMap<>();
+    for (String year : payrolls.keySet()) {
+      List<Profile> profilesCopy = new ArrayList<>(allProfiles);
 
-    output(merged, profiles, profileHeaders);
+      List<Merged> mergedYear = merge(profilesCopy, payrolls.get(year));
+      merged.put(year, mergedYear);
+      leftoverProfiles.put(year, profilesCopy);
 
-    System.out.printf(
-        "merged %s out of %s profiles (%s unmerged)%n",
-        merged.size(), totalProfiles, totalProfiles - merged.size());
+      System.out.printf(
+          "%s: merged %s out of %s profiles (%s unmerged)%n",
+          year, mergedYear.size(), totalProfiles, totalProfiles - mergedYear.size());
+    }
+
+    output(merged, leftoverProfiles, profileHeaders);
+
+
   }
 
   private List<Profile> readProfiles(File profileFile) throws CsvException, IOException {
@@ -143,18 +158,14 @@ public final class ProfilePayroll {
     return reader.readAll().stream().map(Profile::new).collect(toCollection(ArrayList::new));
   }
 
-  private ArrayListMultimap<String, Payroll> readPayroll(File payrollFile)
+  private SortedMap<String, ArrayListMultimap<String, Payroll>> readPayroll(File payrollFile)
       throws CsvException, IOException {
     CSVReader reader = new CSVReader(new FileReader(payrollFile));
     List<String[]> unfiltered = reader.readAll();
-    ArrayListMultimap<String, Payroll> filtered = ArrayListMultimap.create();
+    SortedMap<String, ArrayListMultimap<String, Payroll>> years = new TreeMap<>();
 
     for (String[] row : unfiltered) {
       Payroll payroll = new Payroll(row);
-      // Only get payroll data from this year.
-      if (!payroll.getYear().equals("2021")) {
-        continue;
-      }
       if (TITLES_TO_REMOVE.contains(payroll.getTitle())) {
         continue;
       }
@@ -162,10 +173,13 @@ public final class ProfilePayroll {
       if (payroll.getFirstName().isEmpty() && payroll.getLastName().isEmpty()) {
         continue;
       }
-      filtered.put(payroll.getLastName(), payroll);
+      if (!years.containsKey(payroll.getYear())) {
+        years.put(payroll.getYear(), ArrayListMultimap.create());
+      }
+      years.get(payroll.getYear()).put(payroll.getLastName(), payroll);
     }
 
-    return filtered;
+    return years;
   }
 
   private List<Merged> merge(List<Profile> profiles, ArrayListMultimap<String, Payroll> payroll) {
@@ -238,7 +252,10 @@ public final class ProfilePayroll {
   private Payroll findMatch(Profile profile, List<Payroll> payrolls) {
     // If we identified a manual match, go with that.
     if (MANUAL_MATCHES.containsKey(profile.getTaxId())) {
-      return findManualMatch(profile, payrolls);
+      Payroll match = findManualMatch(profile, payrolls);
+      if (match != null) {
+        return match;
+      }
     }
 
     ImmutableList<Payroll> initialPayrolls = ImmutableList.copyOf(payrolls);
@@ -305,8 +322,10 @@ public final class ProfilePayroll {
       return matchingFirstNames.get(0);
     }
 
-    throw new IllegalStateException(
-        "multiple matches found for " + profile + " - this is unhandled: " + matchingFirstNames);
+    // If there are multiple matches, choose the one that has the most regular pay.
+    List<Payroll> matchingList = new ArrayList<>(matchingFirstNames);
+    matchingList.sort((o1, o2) -> o1.getRegularPay().compareTo(o2.getRegularPay()));
+    return matchingList.get(matchingList.size() - 1);
   }
 
   private Payroll findManualMatch(Profile profile, List<Payroll> payrolls) {
@@ -316,24 +335,31 @@ public final class ProfilePayroll {
         return payroll;
       }
     }
-    throw new IllegalStateException("no manual match found for " + profile);
+    // Manual matches are set up for 2021 payroll data, so may not match with previous years.
+    return null;
   }
 
   private static LocalDate parseDate(String date) {
     return LocalDate.parse(date, DATE_FORMAT);
   }
 
-  private void output(List<Merged> merged, List<Profile> leftoverProfiles, String[] profileHeaders)
+  private void output(
+      Map<String, List<Merged>> merged,
+      Map<String, List<Profile>> leftoverProfiles,
+      String[] profileHeaders)
       throws IOException {
-    CSVWriter writer = new CSVWriter(new FileWriter(outputFile));
+    for (String year : merged.keySet()) {
+      File yearOutput = new File(outputDir, String.format("payroll_%s.csv", year));
+      CSVWriter writer = new CSVWriter(new FileWriter(yearOutput));
 
-    String[] allHeaders = ObjectArrays.concat(profileHeaders, PAYROLL_HEADERS, String.class);
-    writer.writeNext(allHeaders);
+      String[] allHeaders = ObjectArrays.concat(profileHeaders, PAYROLL_HEADERS, String.class);
+      writer.writeNext(allHeaders);
 
-    merged.stream().map(Merged::getRows).forEach(writer::writeNext);
-    leftoverProfiles.stream().map(Profile::getRaw).forEach(writer::writeNext);
+      merged.get(year).stream().map(Merged::getRows).forEach(writer::writeNext);
+      leftoverProfiles.get(year).stream().map(Profile::getRaw).forEach(writer::writeNext);
 
-    writer.close();
+      writer.close();
+    }
   }
 
   private static class Profile {
@@ -418,6 +444,10 @@ public final class ProfilePayroll {
       return ProfilePayroll.parseDate(rows[6]);
     }
 
+    private BigDecimal getRegularPay() {
+      return new BigDecimal(rows[13]);
+    }
+
     private String[] getRaw() {
       return rows;
     }
@@ -434,6 +464,7 @@ public final class ProfilePayroll {
           .add("last name", getLastName())
           .add("title", getTitle())
           .add("appointment date", getAppointmentDate())
+          .add("year", getYear())
           .toString();
     }
   }

@@ -8,5 +8,5 @@ To run:
 1. Run (from the project root):
 
    ```
-   bazel run profile_payroll:ProfilePayroll -- -profile=/full/path/to/officers.csv -payroll=/full/path/to/nyc-nypd-citywide-payroll.csv -output=/full/path/to/output.csv
+   bazel run //profile_payroll:ProfilePayroll -- -profile=/full/path/to/officers.csv -payroll=/full/path/to/nyc-nypd-citywide-payroll.csv -output-dir=/full/path/to/output/
    ```
