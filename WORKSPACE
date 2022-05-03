@@ -17,6 +17,7 @@ maven_install(
         "args4j:args4j:2.33",
         "com.google.guava:guava:31.0.1-jre",
         "com.opencsv:opencsv:5.5.2",
+        "org.json:json:20220320",
     ],
     repositories = [
         "https://maven.google.com",
