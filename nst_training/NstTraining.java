@@ -80,8 +80,8 @@ public final class NstTraining {
                   profile.getString("first_name"),
                   profile.getString("rank"),
                   profile.getString("command"),
-                  "0",
-                  "0",
+                  null,
+                  null,
                   null
                 };
           }
