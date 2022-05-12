@@ -19,11 +19,13 @@ public final class NstTraining {
   private static final String[] OUTPUT_HEADERS = {
     "last_name",
     "first_name",
+    "badge_no",
     "rank",
     "command",
     "substantiated_count",
     "allegation_count",
-    "50a_link"
+    "50a_link",
+    "nypd_profile_link",
   };
 
   @Option(name = "-profile-dir", usage = "Directory with NYPD profile JSON.")
@@ -55,36 +57,37 @@ public final class NstTraining {
 
       for (int i = 0; i < json.length(); i++) {
         JSONObject profile = json.getJSONObject(i);
-        JSONArray training = profile.getJSONObject("reports").getJSONArray("training");
+        JSONArray training;
+        try {
+          training = profile.getJSONObject("reports").getJSONArray("training");
+        } catch (Exception e) {
+          System.out.println("no training data found for " + profile.getString("full_name"));
+          continue;
+        }
         int taxId = profile.getInt("taxid");
 
         if (hasNstTraining(training)) {
           String[] row;
-          if (taxIds.containsKey(taxId)) {
-            JSONObject matchedData = taxIds.get(taxId);
-            row =
-                new String[] {
-                  matchedData.getString("last_name"),
-                  matchedData.getString("first_name"),
-                  matchedData.getString("rank_desc"),
-                  matchedData.getString("command_desc"),
-                  Integer.toString(matchedData.getInt("substantiated_count")),
-                  Integer.toString(matchedData.getInt("allegation_count")),
-                  String.format(
-                      "https://www.50-a.org/officer/%s", matchedData.getString("unique_mos"))
-                };
-          } else {
-            row =
-                new String[] {
-                  profile.getString("last_name"),
-                  profile.getString("first_name"),
-                  profile.getString("rank"),
-                  profile.getString("command"),
-                  null,
-                  null,
-                  null
-                };
-          }
+          JSONObject matchedData = taxIds.get(taxId);
+          row =
+              new String[] {
+                profile.getString("last_name"),
+                profile.getString("first_name"),
+                profile.getString("shield_no"),
+                profile.getString("rank"),
+                profile.getString("command"),
+                matchedData == null
+                    ? "0"
+                    : Integer.toString(matchedData.getInt("substantiated_count")),
+                matchedData == null
+                    ? "0"
+                    : Integer.toString(matchedData.getInt("allegation_count")),
+                matchedData == null
+                    ? ""
+                    : String.format(
+                        "https://www.50-a.org/officer/%s", matchedData.getString("unique_mos")),
+                String.format("https://oip.nypdonline.org/view/1/@TAXID=%s", taxId)
+              };
           writer.writeNext(row);
         }
       }
