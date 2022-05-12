@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.kohsuke.args4j.CmdLineException;
@@ -24,9 +26,12 @@ public final class NstTraining {
     "command",
     "substantiated_count",
     "allegation_count",
+    "nst_training_date",
     "50a_link",
     "nypd_profile_link",
   };
+
+  private static final DateTimeFormatter INPUT_DATE_FORMAT = DateTimeFormatter.ofPattern("M/d/u");
 
   @Option(name = "-profile-dir", usage = "Directory with NYPD profile JSON.")
   private File profileDir;
@@ -66,7 +71,8 @@ public final class NstTraining {
         }
         int taxId = profile.getInt("taxid");
 
-        if (hasNstTraining(training)) {
+        LocalDate nstTrainingDate = getNstTrainingDate(training);
+        if (nstTrainingDate != null) {
           String[] row;
           JSONObject matchedData = taxIds.get(taxId);
           row =
@@ -82,6 +88,7 @@ public final class NstTraining {
                 matchedData == null
                     ? "0"
                     : Integer.toString(matchedData.getInt("allegation_count")),
+                DateTimeFormatter.ISO_LOCAL_DATE.format(nstTrainingDate),
                 matchedData == null
                     ? ""
                     : String.format(
@@ -96,14 +103,14 @@ public final class NstTraining {
     writer.close();
   }
 
-  private static boolean hasNstTraining(JSONArray training) {
+  private static LocalDate getNstTrainingDate(JSONArray training) {
     for (int j = 0; j < training.length(); j++) {
       JSONObject course = training.getJSONObject(j);
       if (NST_COURSE_NAME.equals(course.getString("name"))) {
-        return true;
+        return LocalDate.parse(course.getString("date"), INPUT_DATE_FORMAT);
       }
     }
-    return false;
+    return null;
   }
 
   /** Maps from tax ID to 50a data blob. */
