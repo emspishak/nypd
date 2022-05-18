@@ -21,7 +21,7 @@ import org.kohsuke.args4j.Option;
 
 public final class SrgTraining {
 
-  private static final String[] OUTPUT_HEADERS = {
+  private static final String[] SRG_TRAINED_OUTPUT_HEADERS = {
     "last_name",
     "first_name",
     "badge_no",
@@ -36,6 +36,15 @@ public final class SrgTraining {
     "nypd_profile_link",
   };
 
+  private static final ImmutableList<String> SRG_COMMANDS =
+      ImmutableList.of(
+          "STRATEGIC RESP GRP 1 MANHATTAN",
+          "STRATEGIC RESP GRP 2 BRONX",
+          "STRATEGIC RESP GRP 3 BROOKLYN",
+          "STRATEGIC RESP GRP 4 QUEENS",
+          "STRATEGIC RESP GRP 5 SI",
+          "STRATEGIC RESPONSE GROUP");
+
   private static final DateTimeFormatter INPUT_DATE_FORMAT = DateTimeFormatter.ofPattern("M/d/u");
 
   @Option(name = "-profile-dir", usage = "Directory with NYPD profile JSON.")
@@ -44,8 +53,8 @@ public final class SrgTraining {
   @Option(name = "-50a-data", usage = "50-a server-cache.json file.")
   private File fiftyAData;
 
-  @Option(name = "-output", usage = "File for CSV output of officers with SRG training.")
-  private File outputFile;
+  @Option(name = "-output-dir", usage = "Directory for CSV outputs of SRG related officers.")
+  private File outputDir;
 
   public static void main(String[] args) throws CmdLineException, IOException {
     new SrgTraining().doMain(args);
@@ -54,11 +63,15 @@ public final class SrgTraining {
   private void doMain(String[] args) throws CmdLineException, IOException {
     CmdLineParser parser = new CmdLineParser(this);
     parser.parseArgument(args);
+    outputDir.mkdir();
 
     ImmutableMap<Integer, JSONObject> taxIds = get50AData();
 
-    CSVWriter writer = new CSVWriter(new FileWriter(outputFile));
-    writer.writeNext(OUTPUT_HEADERS);
+    CSVWriter srgTrainedWriter =
+        new CSVWriter(new FileWriter(new File(outputDir, "srg-trained.csv")));
+    CSVWriter srgWriter = new CSVWriter(new FileWriter(new File(outputDir, "srg.csv")));
+    srgTrainedWriter.writeNext(SRG_TRAINED_OUTPUT_HEADERS);
+    srgWriter.writeNext(SRG_TRAINED_OUTPUT_HEADERS);
 
     for (char c = 'A'; c <= 'Z'; c++) {
       File jsonFile = new File(profileDir, String.format("nypd-profiles-%s.json", c));
@@ -77,37 +90,19 @@ public final class SrgTraining {
         int taxId = profile.getInt("taxid");
 
         ImmutableList<Training> trainings = getSrgTrainingDate(training);
+        JSONObject matchedData = taxIds.get(taxId);
+
         if (!trainings.isEmpty()) {
-          String[] row;
-          JSONObject matchedData = taxIds.get(taxId);
-          row =
-              new String[] {
-                profile.getString("last_name"),
-                profile.getString("first_name"),
-                profile.getString("shield_no"),
-                profile.getString("rank"),
-                profile.getString("command"),
-                matchedData == null
-                    ? "0"
-                    : Integer.toString(matchedData.getInt("substantiated_count")),
-                matchedData == null
-                    ? "0"
-                    : Integer.toString(matchedData.getInt("allegation_count")),
-                Integer.toString(trainings.size()),
-                getTrainingDuration(trainings),
-                Joiner.on('\n').join(trainings),
-                matchedData == null
-                    ? ""
-                    : String.format(
-                        "https://www.50-a.org/officer/%s", matchedData.getString("unique_mos")),
-                String.format("https://oip.nypdonline.org/view/1/@TAXID=%s", taxId)
-              };
-          writer.writeNext(row);
+          writeTrainingRow(srgTrainedWriter, profile, matchedData, trainings);
+        }
+        if (SRG_COMMANDS.contains(profile.getString("command"))) {
+          writeTrainingRow(srgWriter, profile, matchedData, trainings);
         }
       }
     }
 
-    writer.close();
+    srgTrainedWriter.close();
+    srgWriter.close();
   }
 
   private static ImmutableList<Training> getSrgTrainingDate(JSONArray training) {
@@ -150,6 +145,31 @@ public final class SrgTraining {
     Training last = trainings.stream().max(Comparator.naturalOrder()).get();
 
     return Long.toString(first.date.until(last.date, ChronoUnit.DAYS));
+  }
+
+  private void writeTrainingRow(
+      CSVWriter trainingWriter,
+      JSONObject profile,
+      JSONObject matched50AData,
+      ImmutableList<Training> srgTrainings) {
+    String[] row = {
+      profile.getString("last_name"),
+      profile.getString("first_name"),
+      profile.getString("shield_no"),
+      profile.getString("rank"),
+      profile.getString("command"),
+      matched50AData == null ? "0" : Integer.toString(matched50AData.getInt("substantiated_count")),
+      matched50AData == null ? "0" : Integer.toString(matched50AData.getInt("allegation_count")),
+      Integer.toString(srgTrainings.size()),
+      getTrainingDuration(srgTrainings),
+      Joiner.on('\n').join(srgTrainings),
+      matched50AData == null
+          ? ""
+          : String.format(
+              "https://www.50-a.org/officer/%s", matched50AData.getString("unique_mos")),
+      String.format("https://oip.nypdonline.org/view/1/@TAXID=%s", profile.getInt("taxid"))
+    };
+    trainingWriter.writeNext(row);
   }
 
   private static final class Training implements Comparable<Training> {
