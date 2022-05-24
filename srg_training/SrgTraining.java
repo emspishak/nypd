@@ -1,9 +1,13 @@
 package emspishak.nypd.srgtraining;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import com.google.common.base.Joiner;
+import com.google.common.collect.Comparators;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ObjectArrays;
 import com.opencsv.CSVWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -13,6 +17,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
+import java.util.Optional;
+import java.util.function.Predicate;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.kohsuke.args4j.CmdLineException;
@@ -21,20 +27,30 @@ import org.kohsuke.args4j.Option;
 
 public final class SrgTraining {
 
-  private static final String[] SRG_TRAINED_OUTPUT_HEADERS = {
+  private static final String[] COMMON_OUTPUT_HEADERS = {
     "last_name",
     "first_name",
     "badge_no",
     "rank",
     "command",
+    "assignment_date",
     "substantiated_count",
     "allegation_count",
-    "srg_training_count",
-    "duration_trained",
-    "srg_trainings",
     "50a_link",
     "nypd_profile_link",
   };
+
+  private static final String[] SRG_TRAINED_OUTPUT_HEADERS =
+      ObjectArrays.concat(
+          COMMON_OUTPUT_HEADERS,
+          new String[] {
+            "srg_training_count", "duration_trained", "srg_trainings",
+          },
+          String.class);
+
+  private static final String[] SRG_TRAINING_OUTPUT_HEADERS =
+      ObjectArrays.concat(
+          COMMON_OUTPUT_HEADERS, new String[] {"training", "training_date"}, String.class);
 
   private static final ImmutableList<String> SRG_COMMANDS =
       ImmutableList.of(
@@ -69,9 +85,14 @@ public final class SrgTraining {
 
     CSVWriter srgTrainedWriter =
         new CSVWriter(new FileWriter(new File(outputDir, "srg-trained.csv")));
-    CSVWriter srgWriter = new CSVWriter(new FileWriter(new File(outputDir, "srg.csv")));
     srgTrainedWriter.writeNext(SRG_TRAINED_OUTPUT_HEADERS);
+
+    CSVWriter srgWriter = new CSVWriter(new FileWriter(new File(outputDir, "srg.csv")));
     srgWriter.writeNext(SRG_TRAINED_OUTPUT_HEADERS);
+
+    CSVWriter srgTrainingsWriter =
+        new CSVWriter(new FileWriter(new File(outputDir, "srg-trainings.csv")));
+    srgTrainingsWriter.writeNext(SRG_TRAINING_OUTPUT_HEADERS);
 
     for (char c = 'A'; c <= 'Z'; c++) {
       File jsonFile = new File(profileDir, String.format("nypd-profiles-%s.json", c));
@@ -88,32 +109,45 @@ public final class SrgTraining {
           continue;
         }
         int taxId = profile.getInt("taxid");
+        LocalDate assignmentDate = getAssignmentDate(profile);
 
-        ImmutableList<Training> trainings = getSrgTrainingDate(training);
+        ImmutableList<Training> allTrainings = getTrainings(training);
+        ImmutableList<Training> srgTrainings =
+            filterTrainings(allTrainings, t -> t.name.startsWith("SRG"));
         JSONObject matchedData = taxIds.get(taxId);
 
-        if (!trainings.isEmpty()) {
-          writeTrainingRow(srgTrainedWriter, profile, matchedData, trainings);
+        if (!srgTrainings.isEmpty()) {
+          writeOfficerRow(srgTrainedWriter, profile, matchedData, srgTrainings, assignmentDate);
         }
         if (SRG_COMMANDS.contains(profile.getString("command"))) {
-          writeTrainingRow(srgWriter, profile, matchedData, trainings);
+          writeOfficerRow(srgWriter, profile, matchedData, srgTrainings, assignmentDate);
+          ImmutableList<Training> trainingsAfterAsignment =
+              filterTrainings(
+                  allTrainings,
+                  t -> !t.date.isPresent() || t.date.get().compareTo(assignmentDate) >= 0);
+          for (Training t : trainingsAfterAsignment) {
+            writeTrainingRow(srgTrainingsWriter, profile, matchedData, t, assignmentDate);
+          }
         }
       }
     }
 
     srgTrainedWriter.close();
     srgWriter.close();
+    srgTrainingsWriter.close();
   }
 
-  private static ImmutableList<Training> getSrgTrainingDate(JSONArray training) {
+  private static ImmutableList<Training> getTrainings(JSONArray training) {
     ImmutableList.Builder<Training> trainings = ImmutableList.builder();
     for (int j = 0; j < training.length(); j++) {
       JSONObject course = training.getJSONObject(j);
-      if (course.getString("name").startsWith("SRG")) {
+      if (course.has("date")) {
         trainings.add(
             new Training(
                 course.getString("name"),
                 LocalDate.parse(course.getString("date"), INPUT_DATE_FORMAT)));
+      } else {
+        trainings.add(new Training(course.getString("name")));
       }
     }
     return trainings.build();
@@ -141,58 +175,105 @@ public final class SrgTraining {
       return "";
     }
 
-    Training first = trainings.stream().min(Comparator.naturalOrder()).get();
-    Training last = trainings.stream().max(Comparator.naturalOrder()).get();
+    Training first =
+        trainings.stream().filter(t -> t.date.isPresent()).min(Comparator.naturalOrder()).get();
+    Training last =
+        trainings.stream().filter(t -> t.date.isPresent()).max(Comparator.naturalOrder()).get();
 
-    return Long.toString(first.date.until(last.date, ChronoUnit.DAYS));
+    return Long.toString(first.date.get().until(last.date.get(), ChronoUnit.DAYS));
+  }
+
+  private LocalDate getAssignmentDate(JSONObject profile) {
+    return LocalDate.parse(
+        profile.getJSONObject("reports").getJSONObject("summary").getString("assignment_date"),
+        INPUT_DATE_FORMAT);
+  }
+
+  private ImmutableList<Training> filterTrainings(
+      ImmutableList<Training> trainings, Predicate<Training> predicate) {
+    return trainings.stream().filter(predicate).collect(toImmutableList());
+  }
+
+  private String[] getRowCommon(
+      JSONObject profile, JSONObject matched50AData, LocalDate assignmentDate) {
+    return new String[] {
+      profile.getString("last_name"),
+      profile.getString("first_name"),
+      profile.getString("shield_no"),
+      profile.getString("rank"),
+      profile.getString("command"),
+      DateTimeFormatter.ISO_LOCAL_DATE.format(assignmentDate),
+      matched50AData == null ? "0" : Integer.toString(matched50AData.getInt("substantiated_count")),
+      matched50AData == null ? "0" : Integer.toString(matched50AData.getInt("allegation_count")),
+      matched50AData == null
+          ? ""
+          : String.format(
+              "https://www.50-a.org/officer/%s", matched50AData.getString("unique_mos")),
+      String.format("https://oip.nypdonline.org/view/1/@TAXID=%s", profile.getInt("taxid")),
+    };
+  }
+
+  private void writeOfficerRow(
+      CSVWriter officerWriter,
+      JSONObject profile,
+      JSONObject matched50AData,
+      ImmutableList<Training> srgTrainings,
+      LocalDate assignmentDate) {
+    String[] row =
+        ObjectArrays.concat(
+            getRowCommon(profile, matched50AData, assignmentDate),
+            new String[] {
+              Integer.toString(srgTrainings.size()),
+              getTrainingDuration(srgTrainings),
+              Joiner.on('\n').join(srgTrainings),
+            },
+            String.class);
+    officerWriter.writeNext(row);
   }
 
   private void writeTrainingRow(
       CSVWriter trainingWriter,
       JSONObject profile,
       JSONObject matched50AData,
-      ImmutableList<Training> srgTrainings) {
-    String[] row = {
-      profile.getString("last_name"),
-      profile.getString("first_name"),
-      profile.getString("shield_no"),
-      profile.getString("rank"),
-      profile.getString("command"),
-      matched50AData == null ? "0" : Integer.toString(matched50AData.getInt("substantiated_count")),
-      matched50AData == null ? "0" : Integer.toString(matched50AData.getInt("allegation_count")),
-      Integer.toString(srgTrainings.size()),
-      getTrainingDuration(srgTrainings),
-      Joiner.on('\n').join(srgTrainings),
-      matched50AData == null
-          ? ""
-          : String.format(
-              "https://www.50-a.org/officer/%s", matched50AData.getString("unique_mos")),
-      String.format("https://oip.nypdonline.org/view/1/@TAXID=%s", profile.getInt("taxid"))
-    };
+      Training training,
+      LocalDate assignmentDate) {
+    String[] row =
+        ObjectArrays.concat(
+            getRowCommon(profile, matched50AData, assignmentDate),
+            new String[] {
+              training.name, training.date.map(DateTimeFormatter.ISO_LOCAL_DATE::format).orElse(""),
+            },
+            String.class);
     trainingWriter.writeNext(row);
   }
 
   private static final class Training implements Comparable<Training> {
 
     private final String name;
-    private final LocalDate date;
+    private final Optional<LocalDate> date;
 
     private Training(String name, LocalDate date) {
       this.name = name;
-      this.date = date;
+      this.date = Optional.of(date);
+    }
+
+    private Training(String name) {
+      this.name = name;
+      this.date = Optional.empty();
     }
 
     @Override
     public int compareTo(Training that) {
       return ComparisonChain.start()
-          .compare(this.date, that.date)
+          .compare(this.date, that.date, Comparators.emptiesLast(Comparator.naturalOrder()))
           .compare(this.name, that.name)
           .result();
     }
 
     @Override
     public String toString() {
-      return String.format("%s / %s", DateTimeFormatter.ISO_LOCAL_DATE.format(date), name);
+      return String.format(
+          "%s / %s", date.map(DateTimeFormatter.ISO_LOCAL_DATE::format).orElse(""), name);
     }
   }
 }
