@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -44,7 +43,7 @@ public final class SrgTraining {
       ObjectArrays.concat(
           COMMON_OUTPUT_HEADERS,
           new String[] {
-            "srg_training_count", "duration_trained", "srg_trainings",
+            "srg_training_count", "srg_trainings",
           },
           String.class);
 
@@ -170,19 +169,6 @@ public final class SrgTraining {
     return data.build();
   }
 
-  private String getTrainingDuration(ImmutableList<Training> trainings) {
-    if (trainings.size() < 2) {
-      return "";
-    }
-
-    Training first =
-        trainings.stream().filter(t -> t.date.isPresent()).min(Comparator.naturalOrder()).get();
-    Training last =
-        trainings.stream().filter(t -> t.date.isPresent()).max(Comparator.naturalOrder()).get();
-
-    return Long.toString(first.date.get().until(last.date.get(), ChronoUnit.DAYS));
-  }
-
   private LocalDate getAssignmentDate(JSONObject profile) {
     return LocalDate.parse(
         profile.getJSONObject("reports").getJSONObject("summary").getString("assignment_date"),
@@ -223,9 +209,7 @@ public final class SrgTraining {
         ObjectArrays.concat(
             getRowCommon(profile, matched50AData, assignmentDate),
             new String[] {
-              Integer.toString(srgTrainings.size()),
-              getTrainingDuration(srgTrainings),
-              Joiner.on('\n').join(srgTrainings),
+              Integer.toString(srgTrainings.size()), Joiner.on('\n').join(srgTrainings),
             },
             String.class);
     officerWriter.writeNext(row);
