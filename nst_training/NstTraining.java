@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -17,7 +18,7 @@ import org.kohsuke.args4j.Option;
 
 public final class NstTraining {
 
-  private static final String NST_COURSE_NAME = "SRG - RAPID MOBILIZATION";
+  private static final String NST_COURSE_NAME = "NEIGHBORHOOD SAFETY TEAM TRAINING, 7-DAY COURSE";
 
   private static final String[] OUTPUT_HEADERS = {
     "last_name",
@@ -27,7 +28,7 @@ public final class NstTraining {
     "command",
     "substantiated_count",
     "allegation_count",
-    "srg_trainings",
+    "nst_training_date",
     "50a_link",
     "nypd_profile_link",
     "lawsuits_count",
@@ -79,8 +80,8 @@ public final class NstTraining {
         }
         int taxId = profile.getInt("taxid");
 
-        ImmutableList<String> trainings = getNstTrainingDate(training);
-        if (!trainings.isEmpty()) {
+        LocalDate nstTrainingDate = getNstTrainingDate(training);
+        if (nstTrainingDate != null) {
           String[] row;
           JSONObject matchedData = taxIds.get(taxId);
           row =
@@ -96,7 +97,7 @@ public final class NstTraining {
                 matchedData == null
                     ? "0"
                     : Integer.toString(matchedData.getInt("allegation_count")),
-                Joiner.on('\n').join(trainings),
+                DateTimeFormatter.ISO_LOCAL_DATE.format(nstTrainingDate),
                 matchedData == null
                     ? ""
                     : String.format(
@@ -114,15 +115,14 @@ public final class NstTraining {
     writer.close();
   }
 
-  private static ImmutableList<String> getNstTrainingDate(JSONArray training) {
-    ImmutableList.Builder<String> trainings = ImmutableList.builder();
+  private static LocalDate getNstTrainingDate(JSONArray training) {
     for (int j = 0; j < training.length(); j++) {
       JSONObject course = training.getJSONObject(j);
-      if (course.getString("name").startsWith("SRG")) {
-        trainings.add(String.format("%s / %s", course.getString("date"), course.getString("name")));
+      if (NST_COURSE_NAME.equals(course.getString("name"))) {
+        return LocalDate.parse(course.getString("date"), INPUT_DATE_FORMAT);
       }
     }
-    return trainings.build();
+    return null;
   }
 
   /** Maps from tax ID to 50a data blob. */
