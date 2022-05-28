@@ -16,6 +16,7 @@ maven_install(
     artifacts = [
         "args4j:args4j:2.33",
         "com.google.guava:guava:31.0.1-jre",
+        "com.google.http-client:google-http-client:1.41.8",
         "com.opencsv:opencsv:5.5.2",
         "org.json:json:20220320",
     ],
