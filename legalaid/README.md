@@ -1,10 +1,8 @@
 # Legal Aid documents
 
-This downloads all documents associated with the Legal Aid organization on
-DocumentCloud
-(https://www.documentcloud.org/app?q=organization%3Athe-legal-aid-society-2723).
-These documents include CCRB closing reports, DA letters, lawsuits and probably
-more.
+This generates links to all documents that look like CCRB Closing Reports that
+Legal Aid has uploaded to their DocumentCloud:
+https://www.documentcloud.org/app?q=%2Borganization%3Athe-legal-aid-society-2723%20%22ccrb%20investigative%20recommendation%22%20%22case%20summary%22
 
 
 To run:
@@ -14,5 +12,5 @@ To run:
 1. Run (from the project root):
 
    ```
-   bazel run //legalaid:LegalAid -- -output-dir /full/path/to/outputdir/
+   bazel run //legalaid:LegalAid
    ```

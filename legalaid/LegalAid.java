@@ -5,26 +5,22 @@ import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
-import org.kohsuke.args4j.Option;
 
 public final class LegalAid {
 
   private static final HttpTransport HTTP_TRANSPORT = new NetHttpTransport();
 
-  // From
-  // https://api.www.documentcloud.org/api/organizations/?individual=unknown&slug=&uuid=&id__in=&name=&name__istartswith=The+Legal+Aid+Society
-  private static final int LEGAL_AID_ORGANIZATION_ID = 2723;
-
-  @Option(name = "-output-dir", usage = "Directory to output files.")
-  private File outputDir;
+  private static final Pattern CCRB_ID = Pattern.compile("(\\d{9})");
 
   public static void main(String[] args) throws CmdLineException, IOException {
     new LegalAid().doMain(args);
@@ -33,18 +29,34 @@ public final class LegalAid {
   private void doMain(String[] args) throws CmdLineException, IOException {
     CmdLineParser parser = new CmdLineParser(this);
     parser.parseArgument(args);
-    outputDir.mkdir();
+
+    Scanner in = new Scanner(System.in);
+    Map<String, String> urls = new LinkedHashMap<>();
 
     String url =
-        String.format(
-            "https://api.www.documentcloud.org/api/documents/?format=json&organization=%s&version=2.0",
-            LEGAL_AID_ORGANIZATION_ID);
+        "https://api.www.documentcloud.org/api/documents/search/?organization=2723&q=%20%22ccrb%20investigative%20recommendation%22%20%22case%20summary%22&version=2.0&format=json";
     while (url != null) {
       JSONObject json = fetchJson(url);
       JSONArray docs = json.getJSONArray("results");
       for (int i = 0; i < docs.length(); i++) {
         JSONObject doc = docs.getJSONObject(i);
-        downloadDoc(doc);
+        Matcher m = CCRB_ID.matcher(doc.getString("title"));
+
+        String id;
+        String docUrl = doc.getString("canonical_url");
+        if (m.find()) {
+          id = m.group(1);
+        } else {
+          System.out.printf("Enter ID for %s : ", docUrl);
+          id = in.nextLine();
+        }
+
+        if (urls.containsKey(id)) {
+          System.out.printf(
+              "duplicate for %s: %s and %s, enter URL to use: ", id, urls.get(id), docUrl);
+          docUrl = in.nextLine();
+        }
+        urls.put(id, docUrl);
       }
 
       if (json.isNull("next")) {
@@ -52,6 +64,14 @@ public final class LegalAid {
       } else {
         url = json.getString("next");
       }
+    }
+
+    for (Map.Entry<String, String> doc : urls.entrySet()) {
+      System.out.println("    {");
+      System.out.printf("      url: '%s',%n", doc.getValue());
+      System.out.println("      title: 'Complaint Closing Report',");
+      System.out.printf("      complaint: '%s'%n", doc.getKey());
+      System.out.println("    },");
     }
   }
 
@@ -61,24 +81,5 @@ public final class LegalAid {
     HttpResponse response = request.execute();
 
     return new JSONObject(response.parseAsString());
-  }
-
-  private static String getDocUrl(JSONObject doc) {
-    return String.format(
-        "%sdocuments/%s/%s.pdf",
-        doc.getString("asset_url"), doc.getInt("id"), doc.getString("slug"));
-  }
-
-  private static String getFilename(JSONObject doc) {
-    return String.format("%s-%s.pdf", doc.getInt("id"), doc.getString("slug"));
-  }
-
-  private void downloadDoc(JSONObject doc) throws IOException {
-    GenericUrl gurl = new GenericUrl(getDocUrl(doc));
-    HttpRequest request = HTTP_TRANSPORT.createRequestFactory().buildGetRequest(gurl);
-    try (OutputStream os = new FileOutputStream(new File(outputDir, getFilename(doc)))) {
-      HttpResponse response = request.execute();
-      response.download(os);
-    }
   }
 }
