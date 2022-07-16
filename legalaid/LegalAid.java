@@ -30,8 +30,7 @@ public final class LegalAid {
     CmdLineParser parser = new CmdLineParser(this);
     parser.parseArgument(args);
 
-    Scanner in = new Scanner(System.in);
-    Map<String, String> urls = new LinkedHashMap<>();
+    Mode mode = new LinkMode();
 
     String url =
         "https://api.www.documentcloud.org/api/documents/search/?organization=2723&q=%20%22ccrb%20investigative%20recommendation%22%20%22case%20summary%22&version=2.0&format=json";
@@ -40,23 +39,7 @@ public final class LegalAid {
       JSONArray docs = json.getJSONArray("results");
       for (int i = 0; i < docs.length(); i++) {
         JSONObject doc = docs.getJSONObject(i);
-        Matcher m = CCRB_ID.matcher(doc.getString("title"));
-
-        String id;
-        String docUrl = doc.getString("canonical_url");
-        if (m.find()) {
-          id = m.group(1);
-        } else {
-          System.out.printf("Enter ID for %s : ", docUrl);
-          id = in.nextLine();
-        }
-
-        if (urls.containsKey(id)) {
-          System.out.printf(
-              "duplicate for %s: %s and %s, enter URL to use: ", id, urls.get(id), docUrl);
-          docUrl = in.nextLine();
-        }
-        urls.put(id, docUrl);
+        mode.process(doc);
       }
 
       if (json.isNull("next")) {
@@ -66,13 +49,7 @@ public final class LegalAid {
       }
     }
 
-    for (Map.Entry<String, String> doc : urls.entrySet()) {
-      System.out.println("    {");
-      System.out.printf("      url: '%s',%n", doc.getValue());
-      System.out.println("      title: 'Complaint Closing Report',");
-      System.out.printf("      complaint: '%s'%n", doc.getKey());
-      System.out.println("    },");
-    }
+    mode.finish();
   }
 
   private static JSONObject fetchJson(String url) throws IOException {
@@ -81,5 +58,54 @@ public final class LegalAid {
     HttpResponse response = request.execute();
 
     return new JSONObject(response.parseAsString());
+  }
+
+  private static interface Mode {
+    void process(JSONObject responseJson);
+
+    void finish();
+  }
+
+  private static final class LinkMode implements Mode {
+
+    private final Map<String, String> urls;
+    private final Scanner in;
+
+    private LinkMode() {
+      urls = new LinkedHashMap<>();
+      in = new Scanner(System.in);
+    }
+
+    @Override
+    public void process(JSONObject doc) {
+      Matcher m = CCRB_ID.matcher(doc.getString("title"));
+
+      String id;
+      String docUrl = doc.getString("canonical_url");
+      if (m.find()) {
+        id = m.group(1);
+      } else {
+        System.out.printf("Enter ID for %s : ", docUrl);
+        id = in.nextLine();
+      }
+
+      if (urls.containsKey(id)) {
+        System.out.printf(
+            "duplicate for %s: %s and %s, enter URL to use: ", id, urls.get(id), docUrl);
+        docUrl = in.nextLine();
+      }
+      urls.put(id, docUrl);
+    }
+
+    @Override
+    public void finish() {
+      for (Map.Entry<String, String> doc : urls.entrySet()) {
+        System.out.println("    {");
+        System.out.printf("      url: '%s',%n", doc.getValue());
+        System.out.println("      title: 'Complaint Closing Report',");
+        System.out.printf("      complaint: '%s'%n", doc.getKey());
+        System.out.println("    },");
+      }
+    }
   }
 }
