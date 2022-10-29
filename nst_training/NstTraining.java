@@ -3,6 +3,7 @@ package emspishak.nypd.nsttraining;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.opencsv.CSVWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -10,6 +11,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
+import java.util.Set;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.kohsuke.args4j.CmdLineException;
@@ -18,17 +21,19 @@ import org.kohsuke.args4j.Option;
 
 public final class NstTraining {
 
-  private static final String NST_COURSE_NAME = "NEIGHBORHOOD SAFETY TEAM TRAINING, 7-DAY COURSE";
+  private static final ImmutableSet<String> NST_COURSE_NAMES = ImmutableSet.of(
+    "NEIGHBORHOOD SAFETY TEAM TRAINING, 7-DAY COURSE",
+    "DASHBOARD CAMERA FOR NEIGHBORHOOD SAFETY TEAMS");
 
   private static final String[] OUTPUT_HEADERS = {
     "last_name",
     "first_name",
+    "tax_id",
     "badge_no",
     "rank",
     "command",
     "substantiated_count",
     "allegation_count",
-    "nst_training_date",
     "50a_link",
     "nypd_profile_link",
     "lawsuits_count",
@@ -80,14 +85,14 @@ public final class NstTraining {
         }
         int taxId = profile.getInt("taxid");
 
-        LocalDate nstTrainingDate = getNstTrainingDate(training);
-        if (nstTrainingDate != null) {
+        if (isNst(training)) {
           String[] row;
           JSONObject matchedData = taxIds.get(taxId);
           row =
               new String[] {
                 profile.getString("last_name"),
                 profile.getString("first_name"),
+                Integer.toString(taxId),
                 profile.getString("shield_no"),
                 profile.getString("rank"),
                 profile.getString("command"),
@@ -97,7 +102,6 @@ public final class NstTraining {
                 matchedData == null
                     ? "0"
                     : Integer.toString(matchedData.getInt("allegation_count")),
-                DateTimeFormatter.ISO_LOCAL_DATE.format(nstTrainingDate),
                 matchedData == null
                     ? ""
                     : String.format(
@@ -115,14 +119,13 @@ public final class NstTraining {
     writer.close();
   }
 
-  private static LocalDate getNstTrainingDate(JSONArray training) {
+  private static boolean isNst(JSONArray training) {
+    Set<String> courseNames = new HashSet<>();
     for (int j = 0; j < training.length(); j++) {
       JSONObject course = training.getJSONObject(j);
-      if (NST_COURSE_NAME.equals(course.getString("name"))) {
-        return LocalDate.parse(course.getString("date"), INPUT_DATE_FORMAT);
-      }
+      courseNames.add(course.getString("name"));
     }
-    return null;
+    return courseNames.containsAll(NST_COURSE_NAMES);
   }
 
   /** Maps from tax ID to 50a data blob. */
