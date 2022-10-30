@@ -43,25 +43,233 @@ public final class ProfilePayroll {
    */
   private static final ImmutableSet<String> TITLES_TO_REMOVE =
       ImmutableSet.of(
+          "*ADM SCHOOL SECURITY MANAGER-U",
+          "*AGENCY ATTORNEY",
+          "*ASSISTANT ADVOCATE-PD",
+          "*ATTORNEY AT LAW",
+          "*CERTIFIED LOCAL AREA NETWORK ADMINISTRATOR",
+          "*CUSTODIAL ASSISTANT",
+          "ACCOUNTANT",
+          "ADM MANAGER-NON-MGRL",
+          "ADMIN COMMUNITY RELATIONS SPECIALIST",
+          "ADMIN CONSTRUCTION PROJECT MANAGER",
+          "ADMIN CONTRACT SPECIALIST",
+          "ADMIN TESTS & MEAS SPEC",
+          "ADMIN TRAFFIC ENF AGNT-UNION",
+          "ADMIN TRAFFIC ENFRCMNT AGENT",
+          "ADMINISTRATIVE ACCOUNTANT",
+          "ADMINISTRATIVE ARCHITECT",
+          "ADMINISTRATIVE CITY PLANNER",
+          "ADMINISTRATIVE COMMUNITY RELATIONS SPECIALIST",
+          "ADMINISTRATIVE CONTRACT SPECIALIST",
+          "ADMINISTRATIVE ENGINEER",
+          "ADMINISTRATIVE GRAPHIC ARTIST",
+          "ADMINISTRATIVE INVESTIGATOR",
+          "ADMINISTRATIVE LABOR RELATIONS ANALYST",
+          "ADMINISTRATIVE MANAGEMENT AUDITOR",
+          "ADMINISTRATIVE MANAGER",
+          "ADMINISTRATIVE PRINTING SERVICES MANAGER",
+          "ADMINISTRATIVE PROCUREMENT ANALYST-NON-MGRL",
+          "ADMINISTRATIVE PROJECT MANAGER",
+          "ADMINISTRATIVE PSYCHOLOGIST",
+          "ADMINISTRATIVE PUBLIC HEALTH SANITARIAN",
+          "ADMINISTRATIVE PUBLIC INFORMATION SPECIALIST NM FORMER M1/M2",
+          "ADMINISTRATIVE PUBLIC INFORMATION SPECIALIST",
+          "ADMINISTRATIVE QUALITY ASSURANCE SPECIALIST",
+          "ADMINISTRATIVE STAFF ANALYST",
+          "ADMINISTRATIVE SUPERVISOR OF BUILDING MAINTENANCE",
+          "ADMINISTRATIVE TRANSPORTATION COORDINATOR",
+          "AGENCY ATTORNEY INTERNE",
+          "AGENCY ATTORNEY",
+          "AGENCY CHIEF CONTRACTING OFFICER",
+          "ARCHITECT",
+          "ASSISTANT ARCHITECT",
+          "ASSISTANT COMMISSIONER",
+          "ASSISTANT COUNSEL-PD",
+          "ASSISTANT DEPUTY COMMISSIONER",
+          "ASSISTANT MECHANICAL ENGINEER",
+          "ASSISTANT PRINTING PRESS OPERATOR",
+          "ASSISTANT SUPERVISING CHIEF SURGEON",
+          "ASSISTANT TO POLICE COMMISSIONOR",
+          "ASSOC SPVR OF SCHOOL SECURITY",
+          "ASSOC SUPVR OF SCHL SEC",
+          "ASSOCIATE FINGERPRINT TECHNICIAN",
+          "ASSOCIATE INVESTIGATOR",
+          "ASSOCIATE LABOR RELATIONS ANALYST",
+          "ASSOCIATE PARKING CONTROL SPECIALIST",
+          "ASSOCIATE PROJECT MANAGER",
+          "ASSOCIATE PUBLIC RECORDS OFFICER",
+          "ASSOCIATE STAFF ANALYST",
           "ASSOCIATE TRAFFIC ENFORCEMENT AGENT",
+          "AUTO BODY WORKER",
           "AUTO MECHANIC",
+          "AUTOMOTIVE SERVICE WORKER",
+          "BOOKBINDER",
+          "BOOKKEEPER",
+          "CARPENTER",
+          "CASE MANAGEMENT NURSE",
+          "CASHIER",
+          "CEMENT MASON",
+          "CERTIFIED IT ADMINISTRATOR",
+          "CERTIFIED IT DEVELOPER",
+          "CHAPLAIN",
+          "CHIEF OF STRATEGIC INITIATIVES",
+          "CITY ATTENDANT",
           "CITY CUSTODIAL ASSISTANT",
+          "CITY DENTIST",
+          "CITY DEPUTY MEDICAL DIRECTOR",
+          "CITY LABORER",
+          "CITY RESEARCH SCIENTIST",
+          "CIVILIANIZATION MANAGER-PD",
+          "CLERICAL AIDE",
+          "CLERICAL ASSOCIATE",
+          "COLLEGE AIDE",
+          "COMMISSIONER",
+          "COMMUNITY ASSISTANT",
+          "COMMUNITY ASSOCIATE",
+          "COMMUNITY COORDINATOR",
+          "COMPOSITOR",
           "COMPUTER ASSOCIATE",
+          "COMPUTER OPERATIONS MANAGER",
+          "COMPUTER PROGRAMMER ANALYST",
+          "COMPUTER SPECIALIST",
+          "COMPUTER SYSTEMS MANAGER",
+          "CONSTRUCTION PROJECT MANAGER",
+          "COUNSEL TO THE POLICE COMMISSIONER",
+          "CRIME ANALYST",
+          "CRIMINALIST ASSISTANT DIRECTOR OF LABORATORY",
+          "CRIMINALIST DEPUTY DIRECTOR OF LABATORY",
+          "CRIMINALIST DIRECTOR OF LABORATORY",
           "CRIMINALIST",
+          "CUSTODIAN",
+          "DEPUTY CHIEF SURGEON",
+          "DIRECTOR EMPLOYEE MANAGEMENT DIVISION",
+          "DIRECTOR MANAGEMENT INFORMATION SYSTEMS",
+          "DIRECTOR OF COMMUNICATIONS",
+          "DIRECTOR OF DEPARTMENT ADVOCATES OFFICE",
+          "DIRECTOR OF INTERNAL AFFAIRS - PD",
+          "DIRECTOR OF MOTOR TRANSPORT",
+          "DIRECTOR OF ORGANIZED CRIME CONTROL-PD",
+          "DIRECTOR OF PHOTOGRAPHIC SERVICES-PD",
+          "DIRECTOR OF PSYCHOLOGICAL SERVICES",
+          "DIRECTOR OF SUPPORT SERVICES-PD",
+          "DIRECTOR OF TECHNOLOGY DEVELOPMENT-PD",
+          "DIRECTOR OF TRAINING",
+          "DIRECTOR",
+          "ECONOMIST",
+          "ELECTRICAL ENGINEER",
+          "ELECTRICIAN",
+          "ELECTRICIANS HELPER",
+          "ELEVATOR MECHANIC",
+          "EMPLOYEE ASSISTANCE PROGRAM SPECIALIST",
           "EVIDENCE AND PROPERTY CONTROL SPECIALIST",
+          "EXECUTIVE AGENCY COUNSEL",
+          "FINGERPRINT TECHNICIAN TRAINEE",
+          "FIRST DEPUTY COMMISSIONER",
+          "FITNESS INSTRUCTOR",
+          "GLAZIER",
+          "GRAPHIC ARTIST",
+          "HEALTH SERVICES MANAGER NON MANAGERIAL LEVEL I",
+          "HORSESHOER",
+          "HOSTLER",
+          "INTELLIGENCE RESEARCH MANAGER-PD",
+          "INTELLIGENCE RESEARCH SPECIALIST-PD",
+          "INVESTIGATOR TRAINEE",
+          "INVESTIGATOR",
+          "IT AUTOMATION AND MONITORING ENGINEER",
+          "IT PROJECT SPECIALIST",
+          "IT SECURITY SPECIALIST",
+          "IT SERVICE MANAGEMENT SPECIALIST",
+          "LOCKSMITH",
+          "MAINTENANCE WORKER",
+          "MANAGEMENT AUDITOR TRAINEE",
+          "MANAGEMENT AUDITOR",
+          "MANAGER OF RADIO REPAIR OPERATIONS",
+          "MARINE MAINTENANCE MECHANIC",
+          "MEDIA SERVICES TECHNICIAN",
+          "MOTOR VEHICLE OPERATOR",
+          "MOTOR VEHICLE SUPERVISOR",
+          "OFFICE MACHINE AIDE",
+          "OILER",
+          "OPERATIONS COMMUNICATIONS SPECIALIST",
+          "PAINTER",
+          "PARALEGAL AIDE",
+          "PARKING CONTROL SPECIALIST",
+          "PHOTOGRAPHER",
+          "PHYSICIAN'S ASSISTANT",
+          "PLUMBER",
+          "PLUMBER'S HELPER",
           "POLICE ADMINISTRATIVE AIDE",
+          "POLICE ATTENDANT",
           "POLICE CADET",
           "POLICE COMMUNICATIONS TECHNICIAN",
+          "POLICE SURGEON",
+          "PRECINCT COMMUNITY RELATIONS AIDE",
+          "PRECINCT RECEPTIONIST",
           "PRINCIPAL ADMINISTRATIVE ASSOCIATE -  NON SUPVR",
+          "PRINCIPAL FINGERPRINT TECHNICIAN",
+          "PRINCIPAL POLICE COMMUNICATION TECHNICIAN",
+          "PRINTING PRESS OPERATOR",
+          "PROCUREMENT ANALYST",
+          "PROGRAM PRODUCER",
+          "PROJECT MANAGER",
+          "PROPERTY CLERK",
+          "PSYCHOLOGIST",
+          "PUBLIC HEALTH ASSISTANT",
+          "PUBLIC RECORDS OFFICER",
+          "QUALITY ASSURANCE SPECIALIST",
           "RADIO REPAIR MECHANIC",
+          "RESEARCH ASSISTANT",
+          "ROOFER",
           "SCHOOL CROSSING GUARD",
           "SCHOOL SAFETY AGENT",
+          "SECRETARY OF THE DEPARTMENT",
+          "SECRETARY TO THE COMMISSIONER",
+          "SECRETARY TO THE FIRST DEPUTY COMMISSIONER-PD",
+          "SECRETARY",
+          "SENIOR IT ARCHITECT",
+          "SENIOR OFFICE APPLIANCE MAINTAINER",
+          "SENIOR PHOTOGRAPHER",
           "SENIOR POLICE ADMINISTRATIVE AIDE",
+          "SENIOR STATIONARY ENGINEER",
+          "SHEET METAL WORKER",
+          "SPECIAL OFFICER",
+          "STAFF ANALYST TRAINEE",
+          "STAFF ANALYST",
+          "STATIONARY ENGINEER",
+          "STEAM FITTER",
+          "STEAM FITTER'S HELPER",
+          "STENOGRAPHER TO EACH DEPUTY COMMISSIONER",
+          "STENOGRAPHIC SPECIALIST",
+          "STOCK WORKER",
+          "SUMMER COLLEGE INTERN",
+          "SUMMER GRADUATE INTERN",
+          "SUPERVISING CHIEF SURGEON",
           "SUPERVISING POLICE COMMUNICATIONS TECHNICIAN",
+          "SUPERVISOR CARPENTER",
+          "SUPERVISOR ELECTRICIAN",
+          "SUPERVISOR ELEVATOR MECHANIC",
+          "SUPERVISOR GLAZIER",
+          "SUPERVISOR LOCKSMITH",
+          "SUPERVISOR OF MECHANICAL INSTALLATIONS & MAINTENANCE",
+          "SUPERVISOR OF MECHANICS",
+          "SUPERVISOR OF OFFICE MACHINE OPERATIONS",
+          "SUPERVISOR OF RADIO REPAIR OPERATIONS",
           "SUPERVISOR OF SCHOOL SECURITY",
+          "SUPERVISOR OF STOCK WORKERS",
+          "SUPERVISOR PAINTER",
+          "SUPERVISOR PLUMBER",
+          "SUPERVISOR ROOFER",
+          "SUPERVISOR SHEET METAL WORKER",
+          "SUPERVISOR STEAMFITTER",
+          "SUPERVISOR THERMOSTAT REPAIR",
+          "SUPERVISOR",
+          "TELECOMMUNICATIONS ASSOCIATE",
+          "TELEPHONE SERVICE TECHNICIAN",
+          "TESTS AND MEASUREMENT SPECIALIST",
+          "THERMOSTAT REPAIRER",
           "TRAFFIC ENFORCEMENT AGENT",
-          "HOSTLER",
-          "PHOTOGRAPHER");
+          "WELDER");
 
   /* The date format of dates in both the profile and payroll data. */
   private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("M/d/yyyy");
@@ -144,13 +352,15 @@ public final class ProfilePayroll {
       leftoverProfiles.put(year, profilesCopy);
 
       System.out.printf(
-          "%s: merged %s out of %s profiles (%s unmerged)%n",
-          year, mergedYear.size(), totalProfiles, totalProfiles - mergedYear.size());
+          "%s: merged %s out of %s profiles (%s unmerged profiles, %s unmerged payrolls)%n",
+          year,
+          mergedYear.size(),
+          totalProfiles,
+          totalProfiles - mergedYear.size(),
+          payrolls.get(year).size());
     }
 
-    output(merged, leftoverProfiles, profileHeaders);
-
-
+    output(merged, leftoverProfiles, payrolls, profileHeaders);
   }
 
   private List<Profile> readProfiles(File profileFile) throws CsvException, IOException {
@@ -346,8 +556,13 @@ public final class ProfilePayroll {
   private void output(
       Map<String, List<Merged>> merged,
       Map<String, List<Profile>> leftoverProfiles,
+      SortedMap<String, ArrayListMultimap<String, Payroll>> leftoverPayrolls,
       String[] profileHeaders)
       throws IOException {
+    if (!outputDir.exists()) {
+      outputDir.mkdir();
+    }
+
     for (String year : merged.keySet()) {
       File yearOutput = new File(outputDir, String.format("payroll_%s.csv", year));
       CSVWriter writer = new CSVWriter(new FileWriter(yearOutput));
@@ -357,6 +572,12 @@ public final class ProfilePayroll {
 
       merged.get(year).stream().map(Merged::getRows).forEach(writer::writeNext);
       leftoverProfiles.get(year).stream().map(Profile::getRaw).forEach(writer::writeNext);
+
+      String[] blankProfile = new String[profileHeaders.length];
+      leftoverPayrolls.get(year).values().stream()
+          .map(Payroll::getRaw)
+          .map(p -> ObjectArrays.concat(blankProfile, p, String.class))
+          .forEach(writer::writeNext);
 
       writer.close();
     }
@@ -444,8 +665,16 @@ public final class ProfilePayroll {
       return ProfilePayroll.parseDate(rows[6]);
     }
 
+    private BigDecimal getBaseSalary() {
+      return new BigDecimal(rows[10]);
+    }
+
     private BigDecimal getRegularPay() {
       return new BigDecimal(rows[13]);
+    }
+
+    private String getLeaveStatus() {
+      return rows[9];
     }
 
     private String[] getRaw() {
